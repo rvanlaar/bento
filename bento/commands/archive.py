@@ -6,7 +6,6 @@ import click
 import bento.orchestrator
 import bento.result
 from bento.context import Context
-from bento.decorators import with_metrics
 from bento.error import NoConfigurationException
 from bento.paths import list_paths
 from bento.result import VIOLATIONS_KEY, Baseline
@@ -24,7 +23,6 @@ from bento.util import echo_newline, echo_next_step
 )
 @click.argument("paths", nargs=-1, type=Path, autocompletion=list_paths)
 @click.pass_obj
-@with_metrics
 def archive(context: Context, all_: bool, paths: Tuple[Path, ...]) -> None:
     """
     Suppress current findings.

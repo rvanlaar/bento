@@ -17,7 +17,6 @@ import bento.tool_runner
 from bento.commands.autorun import install_autorun
 from bento.commands.ci import install_ci, is_ci_configured, is_ci_provider_supported
 from bento.context import Context
-from bento.decorators import with_metrics
 from bento.error import NotAGitRepoException
 from bento.target_file_manager import TargetFileManager
 
@@ -247,7 +246,6 @@ class InitCommand:
     is_flag=True,
     default=False,
 )
-@with_metrics
 def init(ctx: click.Context, clean: bool) -> None:
     """
     Autodetects and installs tools.

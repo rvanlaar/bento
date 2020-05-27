@@ -11,7 +11,6 @@ from packaging.version import InvalidVersion, Version
 import bento.commands.autocomplete as autocomplete
 import bento.constants as constants
 import bento.content.register as content
-import bento.decorators
 import bento.extra
 import bento.git
 import bento.metrics
@@ -19,7 +18,6 @@ import bento.tool_runner
 import bento.util
 from bento.context import Context
 from bento.error import InvalidVersionException, NonInteractiveTerminalException
-from bento.network import post_metrics
 from bento.util import echo_newline, persist_global_config, read_global_config
 
 GLOBAL_GITIGNORE_PATTERN = ".bento/\n.bentoignore"
@@ -72,105 +70,6 @@ class Registrar:
             and constants.TERMS_OF_SERVICE_KEY not in self.global_config
         ):
             content.welcome.echo()
-
-    def _update_email(self) -> None:
-        """
-        Updates the user's global config with their email address
-
-        If the user has passed an email on the command line, this logic is skipped.
-        """
-        # import inside def for performance
-        from validate_email import validate_email
-
-        if not self.email:
-            self.email = self.global_config.get("email")
-
-        if not self.email or not validate_email(self.email):
-            content.UpdateEmail.leader.echo()
-
-            email = None
-            while not (email and validate_email(email)):
-                self.context.start_user_timer()
-                self._validate_interactivity()
-                email = content.UpdateEmail.prompt.echo(
-                    type=str, default=bento.git.user_email()
-                )
-                self.context.stop_user_timer()
-                echo_newline()
-
-            if email != constants.QA_TEST_EMAIL_ADDRESS:
-                r = self._post_email_to_mailchimp(email)
-                if not r:
-                    content.UpdateEmail.failure.echo()
-
-            self.global_config["email"] = email
-            persist_global_config(self.global_config)
-
-    @staticmethod
-    def _post_email_to_mailchimp(email: str) -> bool:
-        """
-        Subscribes this email to the Bento mailing list
-
-        :return: Mailchimp's response status
-        """
-        # import inside def for performance
-        import requests
-
-        r = requests.post(
-            "https://waitlist.r2c.dev/subscribe", json={"email": email}, timeout=5
-        )
-        status: bool = r.status_code == requests.codes.ok
-        data = [
-            {
-                "message": "Tried adding user to Bento waitlist",
-                "user-email": email,
-                "mailchimp_response": r.status_code,
-                "success": status,
-            }
-        ]
-        logging.info(f"Registering user with data {data}")
-        post_metrics(data)
-        return status
-
-    def _confirm_tos_update(self) -> bool:
-        """
-        Interactive process to confirm updated agreement to the Terms of Service
-
-        :return: If the user has agreed to the updated ToS
-        """
-        if constants.TERMS_OF_SERVICE_KEY not in self.global_config:
-            content.ConfirmTos.fresh.echo()
-        else:
-            # We care that the user has agreed to the current terms of service
-            tos_version = self.global_config[constants.TERMS_OF_SERVICE_KEY]
-
-            try:
-                agreed_to_version = Version(tos_version)
-                if agreed_to_version == Version(constants.TERMS_OF_SERVICE_VERSION):
-                    logging.info("User ToS agreement is current")
-                    return True
-            except InvalidVersion:
-                content.ConfirmTos.invalid_version.echo()
-                raise InvalidVersionException()
-
-            content.ConfirmTos.upgrade.echo()
-
-        self.context.start_user_timer()
-        self._validate_interactivity()
-        agreed = content.ConfirmTos.prompt.echo()
-        echo_newline()
-        self.context.stop_user_timer()
-
-        if agreed:
-            self.global_config[
-                constants.TERMS_OF_SERVICE_KEY
-            ] = constants.TERMS_OF_SERVICE_VERSION
-
-            persist_global_config(self.global_config)
-            return True
-        else:
-            content.ConfirmTos.error.echo()
-            return False
 
     def _query_gitignore_update(self) -> Tuple[Path, bool]:
         """
@@ -267,10 +166,6 @@ class Registrar:
         """
 
         self._show_welcome_message()
-        self._update_email()
-
-        if not self.agree and not self._confirm_tos_update():
-            return False
 
         # only ask about updating gitignore in init
         ignore_path: Optional[Path] = None

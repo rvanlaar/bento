@@ -10,7 +10,6 @@ import bento.constants as constants
 import bento.git
 import bento.tool_runner
 from bento.context import Context
-from bento.decorators import with_metrics
 from bento.error import ExistingGitHookException, NotAGitRepoException
 from bento.util import echo_next_step, echo_success, echo_warning
 
@@ -50,7 +49,6 @@ def _notify_install(context: Context, block: bool) -> None:
     help="If --block, commits will fail if Bento finds an issue.",
 )
 @click.pass_obj
-@with_metrics
 def install_autorun(context: Context, block: bool) -> None:
     """
     Configures Bento to automatically run on commits.
@@ -111,7 +109,6 @@ def install_autorun(context: Context, block: bool) -> None:
 
 @click.command(name="autorun")
 @click.pass_obj
-@with_metrics
 def uninstall_autorun(context: Context) -> None:
     """
     Configures Bento to NOT run automatically on commits.

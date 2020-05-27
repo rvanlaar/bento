@@ -8,7 +8,6 @@ from typing import Tuple
 
 import click
 
-from bento.decorators import with_metrics
 from bento.util import append_text_to_file, echo_error, echo_success, file_has_text
 
 ZSH_TEXT = 'eval "$(_BENTO_COMPLETE=source_zsh bento)"'
@@ -46,7 +45,6 @@ def _validate_shell() -> Tuple[Path, str]:
 
 
 @click.command(name="autocomplete")
-@with_metrics
 def install_autocomplete(quiet: bool = False) -> None:
     """
     Enable tab autocompletion in your shell profile.
@@ -66,7 +64,6 @@ def install_autocomplete(quiet: bool = False) -> None:
 
 
 @click.command(name="autocomplete")
-@with_metrics
 def uninstall_autocomplete() -> None:
     """
     Remove tab autocompletion from your shell profile.

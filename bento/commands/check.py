@@ -10,13 +10,11 @@ import click
 import bento.constants
 import bento.formatter
 import bento.metrics
-import bento.network
 import bento.orchestrator
 import bento.result
 import bento.tool_runner
 from bento.config import get_valid_tools, update_tool_run
 from bento.context import Context
-from bento.decorators import with_metrics
 from bento.error import (
     BentoException,
     NoConfigurationException,
@@ -70,7 +68,6 @@ def __get_ignores_for_tool(tool: str, config: Dict[str, Any]) -> List[str]:
 @click.option("--staged-only", is_flag=True, default=False, hidden=True)
 @click.argument("paths", nargs=-1, type=Path, autocompletion=list_paths)
 @click.pass_obj
-@with_metrics
 def check(
     context: Context,
     all_: bool = False,
@@ -191,12 +188,6 @@ def check(
             n_filtered = len(filtered)
             n_all_filtered += n_filtered
             logging.debug(f"{tool_id}: {n_filtered} findings passed filter")
-
-    def post_metrics() -> None:
-        bento.network.post_metrics(findings_to_log, is_finding=True)
-
-    stats_thread = threading.Thread(name="stats", target=post_metrics)
-    stats_thread.start()
 
     dumped = [f.dump(filtered_findings) for f in fmts]
     context.start_user_timer()

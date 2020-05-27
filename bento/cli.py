@@ -10,7 +10,6 @@ import click
 from packaging.version import InvalidVersion, Version
 
 import bento.constants as constants
-import bento.network
 from bento.commands import archive, check, disable, enable, init, register
 from bento.context import Context
 from bento.error import InvalidRegistrationException, OutdatedPythonException
@@ -77,52 +76,6 @@ def _get_version_from_cache(version_cache_path: Path) -> Optional[Version]:
     return None
 
 
-def _get_latest_version(version_cache_path: Path) -> Optional[Version]:
-    """
-        Return latest Version of bento-cli available.
-
-        Checks local version cache to save from making network call
-        but if cache is invalid makes network call and writes to cache.
-
-        Returns None if cache is invalid and network call fails for
-        any reason
-    """
-    latest_version = _get_version_from_cache(version_cache_path)
-    if latest_version is None:
-        latest_version_str, _ = bento.network.fetch_latest_version()
-        if latest_version_str is None:
-            # Request timed out or invalid
-            return None
-
-        try:
-            latest_version = Version(latest_version_str)
-        except InvalidVersion:
-            # latest version str from server incorrect
-            return None
-
-        # Write to version cache
-        with version_cache_path.open("w") as f:
-            # Integer time so no need to deal with str float conversions
-            f.write(f"{int(time.time())}\n")
-            f.write(latest_version_str)
-
-    return latest_version
-
-
-def _is_running_latest() -> bool:
-    """
-        Returns True if current version of bento is latest version available
-    """
-    latest_version = _get_latest_version(constants.GLOBAL_VERSION_CACHE_PATH)
-    current_version = Version(_get_version())
-    logging.info(
-        f"Current bento version is {current_version}, latest is {latest_version}"
-    )
-    if latest_version and current_version < latest_version:
-        return False
-    return True
-
-
 def _get_version() -> str:
     """Get the current r2c-cli version based on __init__"""
     from bento import __version__
@@ -155,34 +108,23 @@ def _is_running_supported_python3() -> bool:
     help="Automatically agree to terms of service.",
     default=False,
 )
-@click.option(
-    "--email",
-    type=str,
-    help="Email address to use while running this command without global configs e.g. in CI",
-    default=None,
-)
 @click.pass_context
 def cli(
-    ctx: click.Context, base_path: Optional[str], agree: bool, email: Optional[str]
+    ctx: click.Context, base_path: Optional[str], agree: bool
 ) -> None:
     _setup_logging()
     is_init = ctx.invoked_subcommand == "init"
     ctx.help_option_names = ["-h", "--help"]
     if base_path is None:
-        ctx.obj = Context(is_init=is_init, email=email)
+        ctx.obj = Context(is_init=is_init)
     else:
-        ctx.obj = Context(base_path=base_path, is_init=is_init, email=email)
+        ctx.obj = Context(base_path=base_path, is_init=is_init)
     if not _is_running_supported_python3():
         raise OutdatedPythonException()
 
-    registrar = register.Registrar(ctx, agree, email=email)
+    registrar = register.Registrar(ctx, agree)
     if not registrar.verify():
         raise InvalidRegistrationException()
-
-    if not _is_running_latest() and not _is_test():
-        logging.warning("Bento client is outdated")
-        click.secho(constants.UPGRADE_WARNING_OUTPUT, err=True)
-
 
 cli.add_command(archive.archive)
 cli.add_command(check.check)

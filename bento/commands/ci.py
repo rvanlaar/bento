@@ -8,7 +8,6 @@ import bento.content.ci as content
 import bento.git
 import bento.tool_runner
 from bento.context import Context
-from bento.decorators import with_metrics
 from bento.error import (
     InvalidRegistrationException,
     NotAGitRepoException,
@@ -75,7 +74,6 @@ def _delete_gh_actions_config(*, path: Path, root_path: Path) -> None:
 
 @click.command(name="ci")
 @click.pass_obj
-@with_metrics
 def install_ci(context: Context) -> None:
     """
     Configures Bento to run in CI.
@@ -110,7 +108,6 @@ def install_ci(context: Context) -> None:
 
 @click.command(name="ci")
 @click.pass_obj
-@with_metrics
 def uninstall_ci(context: Context) -> None:
     """
     Configures Bento to NOT run in CI.
